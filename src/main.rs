@@ -4,6 +4,8 @@ mod environment;
 use betfair::BetfairClient;
 use environment::Environment;
 
+use crate::betfair::BetfairDomain;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
@@ -16,6 +18,20 @@ async fn main() -> Result<()> {
     println!("HTTP {status}");
     println!("loginStatus={}", session.login_status);
     println!("sessionToken={}", session.session_token);
+
+    let (ka_status, ka) = client.keep_alive(&session.session_token).await?;
+    println!("keepAlive HTTP {ka_status}");
+    println!("keepAlive status={}", ka.status);
+    println!("keepAlive product={}", ka.product);
+    println!("keepAlive token={}", ka.token);
+    if let Some(err) = ka.error {
+        println!("keepAlive error={err}");
+    }
+
+    let menu = client
+        .navigation_menu(&ka.token, "en", BetfairDomain::Com)
+        .await?;
+    println!("{menu:#?}");
 
     Ok(())
 }

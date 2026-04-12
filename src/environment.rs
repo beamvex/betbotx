@@ -21,15 +21,28 @@ fn expand_tilde_path(path: &str) -> String {
 
 impl Environment {
     pub fn from_env() -> Result<Self> {
-        let username = env::var("BETFAIR_USERNAME").context("BETFAIR_USERNAME not set")?;
-        let password = env::var("BETFAIR_PASSWORD").context("BETFAIR_PASSWORD not set")?;
-        let app_key = env::var("BETFAIR_APP_KEY").context("BETFAIR_APP_KEY not set")?;
+        let username = env::var("BETFAIR_USERNAME")
+            .context("BETFAIR_USERNAME not set")?
+            .trim()
+            .to_string();
+        let password = env::var("BETFAIR_PASSWORD")
+            .context("BETFAIR_PASSWORD not set")?
+            .trim()
+            .to_string();
+        let app_key = env::var("BETFAIR_APP_KEY")
+            .context("BETFAIR_APP_KEY not set")?
+            .trim()
+            .to_string();
 
         let cert_path = expand_tilde_path(
-            &env::var("BETFAIR_CERT").unwrap_or_else(|_| "client-2048.crt".to_string()),
+            env::var("BETFAIR_CERT")
+                .unwrap_or_else(|_| "client-2048.crt".to_string())
+                .trim(),
         );
         let key_path =
-            expand_tilde_path(&env::var("BETFAIR_KEY").unwrap_or_else(|_| "client-2048.key".to_string()));
+            expand_tilde_path(env::var("BETFAIR_KEY")
+                .unwrap_or_else(|_| "client-2048.key".to_string())
+                .trim());
 
         let insecure = env::var("BETFAIR_INSECURE").ok().as_deref() == Some("1");
 
