@@ -1,55 +1,27 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use reqwest::header::{HeaderMap, HeaderValue};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer};
-use rustls::{ClientConfig, RootCertStore};
 use std::env;
-use std::fs::File;
-use std::io::BufReader;
-use std::sync::Arc;
+use std::fs;
 
-fn read_certs_from_pem(path: &str) -> Result<Vec<CertificateDer<'static>>> {
-    let f = File::open(path).with_context(|| format!("opening cert file: {path}"))?;
-    let mut reader = BufReader::new(f);
-    let certs = rustls_pemfile::certs(&mut reader).collect::<std::result::Result<Vec<_>, _>>()?;
-    if certs.is_empty() {
-        return Err(anyhow!("no certificates found in {path}"));
+fn expand_tilde_path(path: &str) -> String {
+    if let Some(rest) = path.strip_prefix("~/") {
+        if let Ok(home) = env::var("HOME") {
+            return format!("{home}/{rest}");
+        }
     }
-    Ok(certs)
+    path.to_string()
 }
 
-fn read_private_key_from_pem(path: &str) -> Result<PrivateKeyDer<'static>> {
-    let f = File::open(path).with_context(|| format!("opening key file: {path}"))?;
-    let mut reader = BufReader::new(f);
+fn build_client_identity(cert_path: &str, key_path: &str) -> Result<reqwest::Identity> {
+    let cert_pem = fs::read(cert_path).with_context(|| format!("reading cert file: {cert_path}"))?;
+    let key_pem = fs::read(key_path).with_context(|| format!("reading key file: {key_path}"))?;
 
-    let mut keys = rustls_pemfile::private_key(&mut reader)?;
-    match keys.take() {
-        Some(k) => Ok(k),
-        None => Err(anyhow!("no private key found in {path}")),
-    }
-}
+    let mut combined = Vec::with_capacity(cert_pem.len() + 1 + key_pem.len());
+    combined.extend_from_slice(&cert_pem);
+    combined.push(b'\n');
+    combined.extend_from_slice(&key_pem);
 
-fn build_rustls_config(cert_path: &str, key_path: &str) -> Result<ClientConfig> {
-    let cert_chain = read_certs_from_pem(cert_path)?;
-    let key = read_private_key_from_pem(key_path)?;
-
-    let mut roots = RootCertStore::empty();
-    let native = rustls_native_certs::load_native_certs();
-    for cert in native.certs {
-        roots.add(cert).ok();
-    }
-    if roots.is_empty() {
-        return Err(anyhow!(
-            "no native root certificates could be loaded ({} errors)",
-            native.errors.len()
-        ));
-    }
-
-    let config = ClientConfig::builder()
-        .with_root_certificates(roots)
-        .with_client_auth_cert(cert_chain, key)
-        .context("building rustls client config")?;
-
-    Ok(config)
+    reqwest::Identity::from_pem(&combined).context("parsing client identity from PEM")
 }
 
 #[tokio::main]
@@ -60,11 +32,14 @@ async fn main() -> Result<()> {
     let password = env::var("BETFAIR_PASSWORD").context("BETFAIR_PASSWORD not set")?;
     let app_key = env::var("BETFAIR_APP_KEY").context("BETFAIR_APP_KEY not set")?;
 
-    let cert_path = env::var("BETFAIR_CERT").unwrap_or_else(|_| "client-2048.crt".to_string());
-    let key_path = env::var("BETFAIR_KEY").unwrap_or_else(|_| "client-2048.key".to_string());
+    let cert_path = expand_tilde_path(
+        &env::var("BETFAIR_CERT").unwrap_or_else(|_| "client-2048.crt".to_string()),
+    );
+    let key_path =
+        expand_tilde_path(&env::var("BETFAIR_KEY").unwrap_or_else(|_| "client-2048.key".to_string()));
     let insecure = env::var("BETFAIR_INSECURE").ok().as_deref() == Some("1");
 
-    let tls_config = build_rustls_config(&cert_path, &key_path)?;
+    let identity = build_client_identity(&cert_path, &key_path)?;
 
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -73,7 +48,7 @@ async fn main() -> Result<()> {
     );
 
     let client = reqwest::Client::builder()
-        .use_preconfigured_tls(Arc::new(tls_config))
+        .identity(identity)
         .default_headers(headers)
         .danger_accept_invalid_certs(insecure)
         .build()
