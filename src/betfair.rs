@@ -1,6 +1,15 @@
 use anyhow::{Context, Result};
 use reqwest::header::{HeaderMap, HeaderValue};
+use serde::Deserialize;
 use std::fs;
+
+#[derive(Debug, Deserialize)]
+pub struct BetfairSession {
+    #[serde(rename = "sessionToken")]
+    pub session_token: String,
+    #[serde(rename = "loginStatus")]
+    pub login_status: String,
+}
 
 pub struct BetfairClient {
     client: reqwest::Client,
@@ -8,7 +17,7 @@ pub struct BetfairClient {
 
 impl BetfairClient {
     pub fn new(app_key: &str, cert_path: &str, key_path: &str, insecure: bool) -> Result<Self> {
-        let identity = build_client_identity(cert_path, key_path)?;
+        let identity = Self::build_client_identity(cert_path, key_path)?;
 
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -26,7 +35,11 @@ impl BetfairClient {
         Ok(Self { client })
     }
 
-    pub async fn cert_login(&self, username: &str, password: &str) -> Result<(reqwest::StatusCode, String)> {
+    pub async fn cert_login(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<(reqwest::StatusCode, BetfairSession)> {
         let resp = self
             .client
             .post("https://identitysso-cert.betfair.com/api/certlogin")
@@ -36,20 +49,25 @@ impl BetfairClient {
             .context("sending certlogin request")?;
 
         let status = resp.status();
-        let body = resp.text().await.context("reading response body")?;
+        let session = resp
+            .json::<BetfairSession>()
+            .await
+            .context("parsing certlogin response JSON")?;
 
-        Ok((status, body))
+        Ok((status, session))
     }
-}
 
-fn build_client_identity(cert_path: &str, key_path: &str) -> Result<reqwest::Identity> {
-    let cert_pem = fs::read(cert_path).with_context(|| format!("reading cert file: {cert_path}"))?;
-    let key_pem = fs::read(key_path).with_context(|| format!("reading key file: {key_path}"))?;
+    fn build_client_identity(cert_path: &str, key_path: &str) -> Result<reqwest::Identity> {
+        let cert_pem =
+            fs::read(cert_path).with_context(|| format!("reading cert file: {cert_path}"))?;
+        let key_pem =
+            fs::read(key_path).with_context(|| format!("reading key file: {key_path}"))?;
 
-    let mut combined = Vec::with_capacity(cert_pem.len() + 1 + key_pem.len());
-    combined.extend_from_slice(&cert_pem);
-    combined.push(b'\n');
-    combined.extend_from_slice(&key_pem);
+        let mut combined = Vec::with_capacity(cert_pem.len() + 1 + key_pem.len());
+        combined.extend_from_slice(&cert_pem);
+        combined.push(b'\n');
+        combined.extend_from_slice(&key_pem);
 
-    reqwest::Identity::from_pem(&combined).context("parsing client identity from PEM")
+        reqwest::Identity::from_pem(&combined).context("parsing client identity from PEM")
+    }
 }

@@ -30,6 +30,7 @@ dependencies = [
  "rustls",
  "rustls-native-certs",
  "rustls-pemfile",
+ "serde",
  "tokio",
 ]
 

@@ -10,4 +10,5 @@ edition = "2024"
  rustls = { version = "0.23", default-features = false, features = ["ring"] }
  rustls-native-certs = "0.8"
  rustls-pemfile = "2"
+ serde = { version = "1", features = ["derive"] }
  tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
