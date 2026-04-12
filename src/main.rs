@@ -5,6 +5,22 @@ use betfair::BetfairClient;
 use environment::Environment;
 
 use crate::betfair::BetfairDomain;
+use crate::betfair::NavigationNode;
+
+fn print_menu_names(node: &NavigationNode, depth: usize, max_depth: usize, max_children: usize) {
+    if depth > max_depth {
+        return;
+    }
+
+    let indent = "  ".repeat(depth);
+    println!("{indent}{}", node.name);
+    if depth == max_depth {
+        return;
+    }
+    for child in node.children.iter().take(max_children) {
+        print_menu_names(child, depth + 1, max_depth, max_children);
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -31,7 +47,7 @@ async fn main() -> Result<()> {
     let menu = client
         .navigation_menu(&ka.token, "en", BetfairDomain::Com)
         .await?;
-    println!("{menu:#?}");
+    print_menu_names(&menu.1, 0, 4, 10);
 
     Ok(())
 }
