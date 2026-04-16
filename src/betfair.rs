@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use reqwest::header::{HeaderMap, HeaderValue};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
 
@@ -41,10 +41,10 @@ impl BetfairDomain {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct NavigationId(pub Value);
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct NavigationNode {
     #[serde(default)]
     pub children: Vec<NavigationNode>,
