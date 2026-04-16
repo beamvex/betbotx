@@ -58,7 +58,7 @@ fn menu_ui(ui: &mut egui::Ui, node: &NavigationNode) {
         return;
     }
 
-    egui::CollapsingHeader::new(&node.name)
+    egui::CollapsingHeader::new(format!("{} ({})", node.name, node.id.0))
         .default_open(false)
         .show(ui, |ui| {
             for child in &node.children {
