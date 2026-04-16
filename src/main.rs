@@ -89,25 +89,46 @@ impl eframe::App for MenuApp {
             }
         }
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
             ui.heading("Betfair Navigation Menu");
+        });
 
-            if let Some(err) = &self.error {
-                ui.colored_label(egui::Color32::RED, err);
-                ui.separator();
-                ui.label("Fix .env values (BETFAIR_USERNAME/BETFAIR_PASSWORD/BETFAIR_APP_KEY, etc) then restart.");
-                return;
-            }
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                egui::Resize::default()
+                    .resizable(true)
+                    .default_width(360.0)
+                    .min_width(180.0)
+                    .show(ui, |ui| {
+                        ui.set_min_height(ui.available_height());
 
-            if let Some(menu) = &self.menu {
-                ui.label("Saved to output.json");
+                        if let Some(err) = &self.error {
+                            ui.colored_label(egui::Color32::RED, err);
+                            ui.separator();
+                            ui.label("Fix .env values (BETFAIR_USERNAME/BETFAIR_PASSWORD/BETFAIR_APP_KEY, etc) then restart.");
+                            return;
+                        }
+
+                        if let Some(menu) = &self.menu {
+                            egui::ScrollArea::vertical().show(ui, |ui| {
+                                menu_ui(ui, menu);
+                            });
+                        } else {
+                            ui.label("Fetching menu from Betfair...");
+                        }
+                    });
+
                 ui.separator();
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    menu_ui(ui, menu);
+
+                ui.vertical(|ui| {
+                    ui.set_min_height(ui.available_height());
+                    if self.menu.is_some() {
+                        ui.label("Saved to output.json");
+                    } else if self.error.is_none() {
+                        ui.label("Loading...");
+                    }
                 });
-            } else {
-                ui.label("Fetching menu from Betfair...");
-            }
+            });
         });
 
         ctx.request_repaint();
