@@ -91,6 +91,11 @@ async fn main() -> Result<()> {
                 .get_account_details(&ka.token, "en", BetfairDomain::Com)
                 .await?;
             println!("Account details: {:#?}", account_details.text().await?);
+
+            let account_funds = client
+                .get_account_funds(&ka.token, "en", BetfairDomain::Com)
+                .await?;
+            println!("Account funds: {:#?}", account_funds.text().await?);
         }
         Some("load") => {
             let bytes = std::fs::read(&path)?;

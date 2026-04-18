@@ -259,4 +259,23 @@ impl BetfairClient {
 
     }
 
+    pub async fn get_account_funds(
+        &self,
+        session_token: &str,
+        locale: &str,
+        domain: BetfairDomain,
+    ) -> Result<reqwest::Response> {
+    
+        let url = format!(
+            "https://{}/exchange/account/rest/v1.0/getAccountFunds/",
+            domain.host()
+        );
+
+        let resp = self.call_api(session_token, &url).await?;
+
+        Ok(resp)
+
+    }
+
+
 }
