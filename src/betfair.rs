@@ -139,12 +139,40 @@ impl BetfairClient {
         Ok((status, session))
     }
 
+    // https://api.betfair.com/exchange/account/rest/v1.0/
+
     pub async fn navigation_menu(
         &self,
         session_token: &str,
         locale: &str,
         domain: BetfairDomain,
     ) -> Result<(reqwest::StatusCode, NavigationNode)> {
+    
+        let resp = self.call_api(session_token, locale, domain).await?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            return Err(anyhow::anyhow!(
+                "navigation menu request failed with HTTP {status}: {body}"
+            ));
+        }
+
+        let menu = resp
+            .json::<NavigationNode>()
+            .await
+            .context("parsing navigation menu response JSON")?;
+
+        Ok((status, menu))
+
+    }
+
+    pub async fn call_api(
+        &self,
+        session_token: &str,
+        locale: &str,
+        domain: BetfairDomain,
+    ) -> Result<reqwest::Response> {
         let url = format!(
             "https://{}/exchange/betting/rest/v1/{}/navigation/menu.json",
             domain.host(),
@@ -165,20 +193,9 @@ impl BetfairClient {
             .await
             .context("sending navigation menu request")?;
 
-        let status = resp.status();
-        if !status.is_success() {
-            let body = resp.text().await.unwrap_or_default();
-            return Err(anyhow::anyhow!(
-                "navigation menu request failed with HTTP {status}: {body}"
-            ));
-        }
+        
+        Ok(resp)
 
-        let menu = resp
-            .json::<NavigationNode>()
-            .await
-            .context("parsing navigation menu response JSON")?;
-
-        Ok((status, menu))
     }
 
     pub async fn keep_alive(
