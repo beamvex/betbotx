@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct BetfairSession {
     #[serde(rename = "sessionToken")]
     pub session_token: String,
@@ -131,12 +131,14 @@ impl BetfairClient {
             .context("sending certlogin request")?;
 
         let status = resp.status();
+        
         let session = resp
             .json::<BetfairSession>()
             .await
             .context("parsing certlogin response JSON")?;
 
         Ok((status, session))
+        
     }
 
     // https://api.betfair.com/exchange/account/rest/v1.0/
@@ -148,7 +150,13 @@ impl BetfairClient {
         domain: BetfairDomain,
     ) -> Result<(reqwest::StatusCode, NavigationNode)> {
     
-        let resp = self.call_api(session_token, locale, domain).await?;
+        let url = format!(
+            "https://{}/exchange/betting/rest/v1/{}/navigation/menu.json",
+            domain.host(),
+            locale
+        );
+
+        let resp = self.call_api(session_token, &url).await?;
 
         let status = resp.status();
         if !status.is_success() {
@@ -170,14 +178,9 @@ impl BetfairClient {
     pub async fn call_api(
         &self,
         session_token: &str,
-        locale: &str,
-        domain: BetfairDomain,
+        url: &str,
     ) -> Result<reqwest::Response> {
-        let url = format!(
-            "https://{}/exchange/betting/rest/v1/{}/navigation/menu.json",
-            domain.host(),
-            locale
-        );
+        
 
         let session_token =
             HeaderValue::from_str(session_token).context("invalid session token for header")?;
@@ -237,4 +240,23 @@ impl BetfairClient {
 
         reqwest::Identity::from_pem(&combined).context("parsing client identity from PEM")
     }
+
+    pub async fn get_account_details(
+        &self,
+        session_token: &str,
+        locale: &str,
+        domain: BetfairDomain,
+    ) -> Result<reqwest::Response> {
+    
+        let url = format!(
+            "https://{}/exchange/account/rest/v1.0/getAccountDetails/",
+            domain.host()
+        );
+
+        let resp = self.call_api(session_token, &url).await?;
+
+        Ok(resp)
+
+    }
+
 }
