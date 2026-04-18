@@ -3,6 +3,7 @@ use eframe::egui;
 use std::fs;
 use std::sync::mpsc;
 use std::thread;
+use std::time::Duration;
 
 mod betfair;
 mod environment;
@@ -14,6 +15,7 @@ struct MenuApp {
     rx: Option<mpsc::Receiver<Result<NavigationNode>>>,
     menu: Option<NavigationNode>,
     error: Option<String>,
+    selected_json: Option<String>,
 }
 
 impl MenuApp {
@@ -48,42 +50,64 @@ impl MenuApp {
             rx: Some(rx),
             menu: None,
             error: None,
+            selected_json: None,
         }
     }
 }
 
-fn menu_ui(ui: &mut egui::Ui, node: &NavigationNode) {
+fn menu_ui(ui: &mut egui::Ui, node: &NavigationNode, selected_json: &mut Option<String>) {
+    let label = format!("{} ({})", node.name, node.id.0);
+
     if node.children.is_empty() {
-        ui.label(&node.name);
+        if ui.selectable_label(false, label).clicked() {
+            if let Ok(s) = serde_json::to_string_pretty(node) {
+                *selected_json = Some(s);
+            }
+        }
         return;
     }
 
-    egui::CollapsingHeader::new(format!("{} ({})", node.name, node.id.0))
+    egui::CollapsingHeader::new(label)
         .default_open(false)
         .show(ui, |ui| {
+            if ui
+                .selectable_label(false, "(select this node)")
+                .clicked()
+            {
+                if let Ok(s) = serde_json::to_string_pretty(node) {
+                    *selected_json = Some(s);
+                }
+            }
+
             for child in &node.children {
-                menu_ui(ui, child);
+                menu_ui(ui, child, selected_json);
             }
         });
 }
 
 impl eframe::App for MenuApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let mut should_poll = false;
+
         if self.menu.is_none() && self.error.is_none() {
             if let Some(rx) = &self.rx {
+                should_poll = true;
                 match rx.try_recv() {
                     Ok(Ok(menu)) => {
                         self.menu = Some(menu);
                         self.rx = None;
+                        should_poll = false;
                     }
                     Ok(Err(e)) => {
                         self.error = Some(format!("{e:#}"));
                         self.rx = None;
+                        should_poll = false;
                     }
                     Err(mpsc::TryRecvError::Empty) => {}
                     Err(mpsc::TryRecvError::Disconnected) => {
                         self.error = Some("background fetch thread disconnected".to_string());
                         self.rx = None;
+                        should_poll = false;
                     }
                 }
             }
@@ -110,9 +134,11 @@ impl eframe::App for MenuApp {
                         }
 
                         if let Some(menu) = &self.menu {
-                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                menu_ui(ui, menu);
-                            });
+                            egui::ScrollArea::vertical()
+                                .id_source("menu_scroll")
+                                .show(ui, |ui| {
+                                menu_ui(ui, menu, &mut self.selected_json);
+                                });
                         } else {
                             ui.label("Fetching menu from Betfair...");
                         }
@@ -127,11 +153,28 @@ impl eframe::App for MenuApp {
                     } else if self.error.is_none() {
                         ui.label("Loading...");
                     }
+
+                    ui.separator();
+
+                    egui::ScrollArea::vertical()
+                        .id_source("json_scroll")
+                        .show(ui, |ui| {
+                            if let Some(json) = self.selected_json.as_ref() {
+                                ui.add(
+                                    egui::Label::new(egui::RichText::new(json).monospace())
+                                        .selectable(true),
+                                );
+                            } else {
+                                ui.label("Click a node on the left to view its JSON here.");
+                            }
+                        });
                 });
             });
         });
 
-        ctx.request_repaint();
+        if should_poll {
+            ctx.request_repaint_after(Duration::from_millis(50));
+        }
     }
 }
 
