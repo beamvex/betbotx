@@ -76,15 +76,30 @@ async fn main() -> Result<()> {
             for child in menu.children.iter().take(100) {
                 //println!("{}", child.name);
                 if child.name == "Horse Racing" {
-                    //println!("Found Horse Racing!");
+                    println!("Found Horse Racing!");
                     horse_racing_node = Some(child);
+
+                    for grandchild in child.children.iter().take(100) {
+                        if grandchild.name == "GB" {
+                            println!("GB Found Today!");
+
+                            print_menu_names(grandchild, 0, 3, 100);
+                            
+                            let json = serde_json::to_string_pretty(&grandchild)?;
+                            std::fs::write("gb_today.json", json)?;
+                            println!("Wrote gb_today.json");
+                            
+                            break;
+                        }
+                    }
+
+
+
                     break;
                 }
             }
 
-            if let Some(node) = horse_racing_node {
-                print_menu_names(node, 0, 1, 100);
-            }
+            
         }
         Some("-h") | Some("--help") => {
             usage();
