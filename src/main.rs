@@ -5,6 +5,8 @@ use betfair::BetfairClient;
 use environment::Environment;
 use std::env;
 
+use chrono::{DateTime, Local};
+
 use crate::betfair::BetfairDomain;
 use crate::betfair::NavigationNode;
 
@@ -173,10 +175,18 @@ fn process_races(meeting: &NavigationNode) -> Result<(), Box<dyn std::error::Err
     
     for race in meeting.children.iter() {
         if race.market_type == Some("WIN".to_string()) {
-            println!("{:?}", race.market_start_time.as_ref().map(|s| s.as_str()).unwrap_or("duff"));
+
+            let start_time = match race.market_start_time.as_deref() {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let utc: DateTime<_> = DateTime::parse_from_rfc3339(start_time)?;
+            let local = utc.with_timezone(&Local);
+
+            println!("{}", local.format("%H:%M"));
         }
     }
     
-    Ok({})
+    Ok(())
 }
-
