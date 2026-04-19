@@ -113,13 +113,27 @@ async fn main() -> Result<()> {
                         if grandchild.name == "GB" {
                             println!("GB Found Today!");
 
-                            print_menu_names(grandchild, 0, 3, 100);
+                            //print_menu_names(grandchild, 0, 3, 100);
                             
                             let json = serde_json::to_string_pretty(&grandchild)?;
                             std::fs::write("gb_today.json", json)?;
                             println!("Wrote gb_today.json");
                             
-                            break;
+                            process_meetings(&grandchild);
+
+                            
+                        } else if grandchild.name == "IRE" {
+                            println!("IRE Found Today!");
+
+                            //print_menu_names(grandchild, 0, 3, 100);
+                            
+                            let json = serde_json::to_string_pretty(&grandchild)?;
+                            std::fs::write("ie_today.json", json)?;
+                            println!("Wrote ie_today.json");
+                            
+                            process_meetings(&grandchild);
+
+                            
                         }
                     }
 
@@ -142,3 +156,27 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
+
+fn process_meetings(grandchild: &NavigationNode) -> Result<(), Box<dyn std::error::Error>> {
+    
+    for child in grandchild.children.iter() {
+        println!("{}", child.name);
+
+        process_races(child)?;
+    }
+
+
+    Ok(())
+}
+
+fn process_races(meeting: &NavigationNode) -> Result<(), Box<dyn std::error::Error>> {
+    
+    for race in meeting.children.iter() {
+        if race.market_type == Some("WIN".to_string()) {
+            println!("{:?}", race.market_start_time.as_ref().map(|s| s.as_str()).unwrap_or("duff"));
+        }
+    }
+    
+    Ok({})
+}
+
