@@ -156,7 +156,7 @@ impl BetfairClient {
             locale
         );
 
-        let resp = self.call_api(session_token, &url).await?;
+        let resp = self.call_api(session_token, &url, "GET").await?;
 
         let status = resp.status();
         if !status.is_success() {
@@ -175,27 +175,48 @@ impl BetfairClient {
 
     }
 
-    pub async fn call_api(
+    pub fn build_request(
         &self,
         session_token: &str,
         url: &str,
-    ) -> Result<reqwest::Response> {
+        method: &str,
+    ) -> Result<reqwest::RequestBuilder> {
         
 
         let session_token =
             HeaderValue::from_str(session_token).context("invalid session token for header")?;
 
-        let resp = self
-            .non_mtls_client
-            .get(url)
+        let request = 
+            match method {
+                "POST" => self.non_mtls_client.post(url),
+                "GET" => self.non_mtls_client.get(url),
+                "PUT" => self.non_mtls_client.put(url),
+                "DELETE" => self.non_mtls_client.delete(url),
+                _ => return Err(anyhow::anyhow!("invalid method")),
+            }
             .header("X-Application", self.app_key.clone())
             .header("X-Authentication", session_token)
             .header(reqwest::header::ACCEPT, "application/json")
-            .header(reqwest::header::CONNECTION, "keep-alive")
-            .send()
+            .header(reqwest::header::CONNECTION, "keep-alive");
+            
+        
+        Ok(request)
+
+    }
+
+    pub async fn call_api(
+        &self,
+        session_token: &str,
+        url: &str,
+        method: &str,
+    ) -> Result<reqwest::Response> {
+        
+
+        let builder = self.build_request(session_token, url, method)?;
+
+        let resp = builder.send()
             .await
             .context("sending navigation menu request")?;
-
         
         Ok(resp)
 
@@ -253,7 +274,7 @@ impl BetfairClient {
             domain.host()
         );
 
-        let resp = self.call_api(session_token, &url).await?;
+        let resp = self.call_api(session_token, &url, "GET").await?;
 
         Ok(resp)
 
@@ -271,11 +292,29 @@ impl BetfairClient {
             domain.host()
         );
 
-        let resp = self.call_api(session_token, &url).await?;
+        let resp = self.call_api(session_token, &url, "GET").await?;
 
         Ok(resp)
 
     }
 
+
+    pub async fn list_market_books(
+        &self,
+        session_token: &str,
+        locale: &str,
+        domain: BetfairDomain,
+    ) -> Result<reqwest::Response> {
+    
+        let url = format!(
+            "https://{}/exchange/betting/rest/v1.0/listMarketBooks/",
+            domain.host()
+        );
+
+        let resp = self.call_api(session_token, &url, "GET").await?;
+
+        Ok(resp)
+
+    }
 
 }

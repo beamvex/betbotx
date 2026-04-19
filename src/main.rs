@@ -172,6 +172,7 @@ fn process_meetings(grandchild: &NavigationNode) -> Result<(), Box<dyn std::erro
 }
 
 fn process_races(meeting: &NavigationNode) -> Result<(), Box<dyn std::error::Error>> {
+    let today = Local::now().date_naive();
     
     for race in meeting.children.iter() {
         if race.market_type == Some("WIN".to_string()) {
@@ -184,7 +185,11 @@ fn process_races(meeting: &NavigationNode) -> Result<(), Box<dyn std::error::Err
             let utc: DateTime<_> = DateTime::parse_from_rfc3339(start_time)?;
             let local = utc.with_timezone(&Local);
 
-            println!("{}", local.format("%H:%M"));
+            if local.date_naive() != today {
+                continue;
+            }
+
+            println!("{} : {}", local.format("%H:%M"), race.id.0);
         }
     }
     
