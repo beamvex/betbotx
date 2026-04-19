@@ -79,6 +79,38 @@ pub struct NavigationNode {
     pub number_of_winners: Option<Value>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct MarketBookRequest {
+    #[serde(rename = "marketIds")]
+    pub market_ids: Vec<String>,
+    #[serde(rename = "priceProjection")]
+    pub price_projection: PriceProjection,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PriceProjection {
+    #[serde(rename = "priceData")]
+    pub price_data: Vec<String>,
+}
+
+
+#[derive(Debug, Serialize)]
+pub struct MarketFilter {
+    #[serde(rename = "marketIds")]
+    pub market_ids: Vec<String>,
+}
+
+
+#[derive(Debug, Serialize)]
+pub struct MarketCatalogueRequest {
+    #[serde(rename = "filter")]
+    pub filter: MarketFilter,
+    #[serde(rename = "marketProjection")]
+    pub market_projection: Vec<String>,
+    #[serde(rename = "maxResults")]
+    pub max_results: i32,
+}
+
 pub struct BetfairClient {
     client: reqwest::Client,
     non_mtls_client: reqwest::Client,
@@ -156,7 +188,7 @@ impl BetfairClient {
             locale
         );
 
-        let resp = self.call_api(session_token, &url, "GET").await?;
+        let resp = self.call_api(session_token, &url, "GET", None).await?;
 
         let status = resp.status();
         if !status.is_success() {
@@ -209,10 +241,16 @@ impl BetfairClient {
         session_token: &str,
         url: &str,
         method: &str,
+        body: Option<String>,
     ) -> Result<reqwest::Response> {
         
 
         let builder = self.build_request(session_token, url, method)?;
+
+        let builder = match body {
+            Some(body) => builder.body(body).header("Content-Type", "application/json"),
+            None => builder,
+        };
 
         let resp = builder.send()
             .await
@@ -274,7 +312,7 @@ impl BetfairClient {
             domain.host()
         );
 
-        let resp = self.call_api(session_token, &url, "GET").await?;
+        let resp = self.call_api(session_token, &url, "GET", None).await?;
 
         Ok(resp)
 
@@ -292,7 +330,7 @@ impl BetfairClient {
             domain.host()
         );
 
-        let resp = self.call_api(session_token, &url, "GET").await?;
+        let resp = self.call_api(session_token, &url, "GET", None).await?;
 
         Ok(resp)
 
@@ -307,11 +345,50 @@ impl BetfairClient {
     ) -> Result<reqwest::Response> {
     
         let url = format!(
-            "https://{}/exchange/betting/rest/v1.0/listMarketBooks/",
+            "https://{}/exchange/betting/rest/v1.0/listMarketBook/",
             domain.host()
         );
 
-        let resp = self.call_api(session_token, &url, "GET").await?;
+        let request = MarketBookRequest {
+            market_ids: vec!["1.256991740".to_string()],
+            price_projection: PriceProjection {
+                price_data: vec!["EX_BEST_OFFERS".to_string()],
+            },
+        };
+
+        let body = serde_json::to_string(&request)?;
+
+        let resp = self.call_api(session_token, &url, "POST", Some(body)).await?;
+
+        Ok(resp)
+
+    }
+
+    pub async fn list_market_catalogue(
+        &self,
+        session_token: &str,
+        locale: &str,
+        domain: BetfairDomain,
+    ) -> Result<reqwest::Response> {
+    
+        let url = format!(
+            "https://{}/exchange/betting/rest/v1.0/listMarketCatalogue/",
+            domain.host()
+        );
+
+        let request = MarketCatalogueRequest {
+            filter: MarketFilter {
+                market_ids: vec!["1.256991740".to_string()],
+            },
+            market_projection: vec!["MARKET_START_TIME".to_string(), "RUNNER_DESCRIPTION".to_string(), "EVENT".to_string(), "COMPETITION".to_string(), "EVENT_TYPE".to_string(), "MARKET_DESCRIPTION".to_string()],
+            max_results: 100,
+        };
+
+        
+
+        let body = serde_json::to_string(&request)?;
+
+        let resp = self.call_api(session_token, &url, "POST", Some(body)).await?;
 
         Ok(resp)
 
