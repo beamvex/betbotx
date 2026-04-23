@@ -9,6 +9,7 @@ use chrono::{DateTime, Local};
 
 use crate::betfair::BetfairDomain;
 use crate::betfair::BetfairAccountClient;
+use crate::betfair::BetfairBettingClient;
 use crate::betfair::NavigationNode;
 
 fn print_menu_names(node: &NavigationNode, depth: usize, max_depth: usize, max_children: usize) {
@@ -124,12 +125,14 @@ async fn main() -> Result<()> {
 
             let _account_client = BetfairAccountClient::new(&client);
 
-            let list_market_books = client
+            let betting_client = BetfairBettingClient::new(&client);
+
+            let list_market_books = betting_client
                 .list_market_books(&ka.token, "en", BetfairDomain::Com)
                 .await?;
             println!("List market books: {:#?}", list_market_books.json::<serde_json::Value>().await?);
 
-            let list_market_catalogue = client
+            let list_market_catalogue = betting_client
                 .list_market_catalogue(&ka.token, "en", BetfairDomain::Com)
                 .await?;
             println!("List market catalogue: {:#?}", list_market_catalogue.json::<serde_json::Value>().await?);
