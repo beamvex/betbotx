@@ -8,6 +8,7 @@ use std::env;
 use chrono::{DateTime, Local};
 
 use crate::betfair::BetfairDomain;
+use crate::betfair::BetfairAccountClient;
 use crate::betfair::NavigationNode;
 
 fn print_menu_names(node: &NavigationNode, depth: usize, max_depth: usize, max_children: usize) {
@@ -89,12 +90,14 @@ async fn main() -> Result<()> {
                 println!("keepAlive error={err}");
             }
 
-            let account_details = client
+            let account_client = BetfairAccountClient::new(&client);
+
+            let account_details = account_client
                 .get_account_details(&ka.token, "en", BetfairDomain::Com)
                 .await?;
             println!("Account details: {:#?}", account_details.text().await?);
 
-            let account_funds = client
+            let account_funds = account_client
                 .get_account_funds(&ka.token, "en", BetfairDomain::Com)
                 .await?;
             println!("Account funds: {:#?}", account_funds.text().await?);
@@ -118,6 +121,8 @@ async fn main() -> Result<()> {
             if let Some(err) = ka.error {
                 println!("keepAlive error={err}");
             }
+
+            let _account_client = BetfairAccountClient::new(&client);
 
             let list_market_books = client
                 .list_market_books(&ka.token, "en", BetfairDomain::Com)
