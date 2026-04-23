@@ -10,6 +10,7 @@ use chrono::{DateTime, Local};
 use crate::betfair::BetfairDomain;
 use crate::betfair::BetfairAccountClient;
 use crate::betfair::BetfairBettingClient;
+use crate::betfair::BetfairNavigationClient;
 use crate::betfair::NavigationNode;
 
 fn print_menu_names(node: &NavigationNode, depth: usize, max_depth: usize, max_children: usize) {
@@ -62,7 +63,9 @@ async fn main() -> Result<()> {
                 println!("keepAlive error={err}");
             }
 
-            let menu = client
+            let navigation_client = BetfairNavigationClient::new(&client);
+
+            let menu = navigation_client
                 .navigation_menu(&ka.token, "en", BetfairDomain::Com)
                 .await?;
             print_menu_names(&menu.1, 0, 4, 10);
