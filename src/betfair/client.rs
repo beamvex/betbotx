@@ -109,16 +109,13 @@ impl BetfairClient {
     }
 
     pub async fn keep_alive(&self, session_token: &str) -> Result<(reqwest::StatusCode, KeepAliveResponse)> {
-        let session_token =
-            HeaderValue::from_str(session_token).context("invalid session token for header")?;
-
         let resp = self
-            .non_mtls_client
-            .get("https://identitysso.betfair.com/api/keepAlive")
-            .header("X-Application", self.app_key.clone())
-            .header("X-Authentication", session_token)
-            .header(reqwest::header::ACCEPT, "application/json")
-            .send()
+            .call_api(
+                session_token,
+                "https://identitysso.betfair.com/api/keepAlive",
+                "GET",
+                None,
+            )
             .await
             .context("sending keepAlive request")?;
 
