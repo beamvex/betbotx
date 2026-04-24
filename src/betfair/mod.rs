@@ -1,9 +1,11 @@
 pub mod client;
+pub mod sso;
 pub mod account;
 pub mod betting;
 pub mod navigation;
 pub mod model;
 pub use client::BetfairClient;
+pub use sso::BetfairSsoClient;
 pub use account::BetfairAccountClient;
 pub use betting::BetfairBettingClient;
 pub use navigation::BetfairNavigationClient;

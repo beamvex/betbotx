@@ -11,6 +11,7 @@ use crate::betfair::BetfairDomain;
 use crate::betfair::BetfairAccountClient;
 use crate::betfair::BetfairBettingClient;
 use crate::betfair::BetfairNavigationClient;
+use crate::betfair::BetfairSsoClient;
 use crate::betfair::NavigationNode;
 
 fn print_menu_names(node: &NavigationNode, depth: usize, max_depth: usize, max_children: usize) {
@@ -48,7 +49,8 @@ async fn main() -> Result<()> {
 
             let client =
                 BetfairClient::new(&env.app_key, &env.cert_path, &env.key_path, env.insecure)?;
-            let (status, session) = client.cert_login(&env.username, &env.password).await?;
+            let sso_client = BetfairSsoClient::new(&client);
+            let (status, session) = sso_client.cert_login(&env.username, &env.password).await?;
 
             println!("HTTP {status}");
             println!("loginStatus={}", session.login_status);
@@ -79,7 +81,8 @@ async fn main() -> Result<()> {
 
             let client =
                 BetfairClient::new(&env.app_key, &env.cert_path, &env.key_path, env.insecure)?;
-            let (status, session) = client.cert_login(&env.username, &env.password).await?;
+            let sso_client = BetfairSsoClient::new(&client);
+            let (status, session) = sso_client.cert_login(&env.username, &env.password).await?;
 
             println!("HTTP {status}");
             println!("loginStatus={}", session.login_status);
@@ -111,7 +114,8 @@ async fn main() -> Result<()> {
 
             let client =
                 BetfairClient::new(&env.app_key, &env.cert_path, &env.key_path, env.insecure)?;
-            let (status, session) = client.cert_login(&env.username, &env.password).await?;
+            let sso_client = BetfairSsoClient::new(&client);
+            let (status, session) = sso_client.cert_login(&env.username, &env.password).await?;
 
             println!("HTTP {status}");
             println!("loginStatus={}", session.login_status);

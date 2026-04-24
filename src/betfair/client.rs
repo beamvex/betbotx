@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use reqwest::header::{HeaderMap, HeaderValue};
 use std::fs;
 
-use super::model::{BetfairSession, KeepAliveResponse};
+use super::model::KeepAliveResponse;
 
 pub struct BetfairClient {
     client: reqwest::Client,
@@ -39,27 +39,8 @@ impl BetfairClient {
         })
     }
 
-    pub async fn cert_login(
-        &self,
-        username: &str,
-        password: &str,
-    ) -> Result<(reqwest::StatusCode, BetfairSession)> {
-        let resp = self
-            .client
-            .post("https://identitysso-cert.betfair.com/api/certlogin")
-            .form(&[("username", username), ("password", password)])
-            .send()
-            .await
-            .context("sending certlogin request")?;
-
-        let status = resp.status();
-
-        let session = resp
-            .json::<BetfairSession>()
-            .await
-            .context("parsing certlogin response JSON")?;
-
-        Ok((status, session))
+    pub(crate) fn mtls_client(&self) -> &reqwest::Client {
+        &self.client
     }
 
     pub fn build_request(
